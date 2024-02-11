@@ -1,4 +1,4 @@
-package com.challenge.wefox.entities.db;
+package com.challenge.wefox.entities;
 
 public enum ErrorType {
     DATABASE,

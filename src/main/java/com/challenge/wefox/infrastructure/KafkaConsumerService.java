@@ -1,11 +1,13 @@
 package com.challenge.wefox.infrastructure;
 
-import com.challenge.wefox.entities.db.Payment;
+import com.challenge.wefox.infrastructure.model.PaymentEvent;
 import com.challenge.wefox.service.PaymentService;
+import com.google.gson.Gson;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.messaging.support.GenericMessage;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -26,7 +28,13 @@ public class KafkaConsumerService {
                     JsonDeserializer.VALUE_DEFAULT_TYPE + "=com.challenge.wefox.entities.db.Payment",
                     JsonDeserializer.TRUSTED_PACKAGES + "*",
             })
-    public void consumePayments(Payment payment) {
+    public void consumePayments(GenericMessage<String> paymentMessage) {
+        PaymentEvent payment = mapMessagePayload(paymentMessage.getPayload());
         paymentService.processPayment(payment);
+    }
+
+    private PaymentEvent mapMessagePayload(String paymentMessage) {
+        Gson gson = new Gson();
+        return gson.fromJson(paymentMessage, PaymentEvent.class);
     }
 }

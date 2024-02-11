@@ -22,7 +22,7 @@ public class Error {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "error", length = 20)
-    private com.challenge.wefox.entities.db.ErrorType errorType;
+    private com.challenge.wefox.entities.ErrorType errorType;
 
     @Column(name = "error_description")
     private String errorDescription;

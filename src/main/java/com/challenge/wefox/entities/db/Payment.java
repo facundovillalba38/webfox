@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Date;
 
 @Entity
@@ -32,6 +33,6 @@ public class Payment {
     private BigDecimal amount;
 
     @Column(name = "created_on")
-    private Date createdOn;
+    private LocalDate createdOn;
 }
 
