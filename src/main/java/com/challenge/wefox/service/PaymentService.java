@@ -85,8 +85,6 @@ public class PaymentService {
     }
 
     private Mono<String> checkPaymentValid(PaymentEvent paymentEvent){
-        // not sure what this endpoints return in order to check if valid or not. In postman it returns a 200 and that's it
-        // we can assume that 200 is that the payment is valid, and any other error Http Status is that the payment is invalid.
         final String url = "http://localhost:9000/payment";
         return webClient.post()
                 .uri(url)
