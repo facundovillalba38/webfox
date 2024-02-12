@@ -22,7 +22,7 @@ public class KafkaConsumerService {
             topics = {"online", "offline"},
             groupId = "payment-processor",
             properties = {
-                    ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG + "=localhost:29092",
+                    ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG + "=#{'${kafka.host}'}",
                     ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS+ "=org.springframework.kafka.support.serializer.JsonDeserializer",
                     ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS+ "=org.apache.kafka.common.serialization.StringDeserializer",
                     JsonDeserializer.VALUE_DEFAULT_TYPE + "=com.challenge.wefox.entities.db.Payment",

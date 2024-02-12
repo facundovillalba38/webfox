@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.internal.util.reflection.Whitebox;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -42,6 +43,7 @@ class PaymentServiceTest {
     void init() {
         paymentService = new PaymentService(paymentRepository, accountRepository);
         webClient = WebClient.create("http://localhost:9000");
+        Whitebox.setInternalState(paymentService, "apiProducerHost", "http://localhost:9000");
     }
 
     @Test
@@ -100,16 +102,6 @@ class PaymentServiceTest {
         return paymentEvent;
     }
 
-    private Payment createPayment(){
-        Payment payment = new Payment();
-        payment.setPaymentId("123456");
-        payment.setAccount(createAccount());
-        payment.setPaymentType("online");
-        payment.setCreditCard("12345");
-        payment.setAmount(BigDecimal.TEN);
-        return payment;
-    }
-
     private Account createAccount(){
         Account acc = new Account();
         acc.setAccountId(1l);
@@ -118,13 +110,5 @@ class PaymentServiceTest {
         acc.setName("name");
         acc.setEmail("email@email.com");
         return acc;
-    }
-
-    private WebClient getWebClientMockInvalidPayment() {
-        WebClient mockWebClient = Mockito.mock(WebClient.class);
-
-        when(webClient.post().retrieve().bodyToMono(String.class)).thenReturn(Mono.just(INVALID_PAYMENT));
-
-        return mockWebClient;
     }
 }

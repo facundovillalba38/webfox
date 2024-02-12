@@ -9,8 +9,10 @@ import com.challenge.wefox.exception.PaymentException;
 import com.challenge.wefox.infrastructure.model.PaymentEvent;
 import com.challenge.wefox.repository.AccountRepository;
 import com.challenge.wefox.repository.PaymentRepository;
-import org.springframework.http.MediaType;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -24,16 +26,20 @@ public class PaymentService {
     private final static String INVALID_PAYMENT = "Payment is Invalid";
     private final PaymentRepository paymentRepository;
     private final AccountRepository accountRepository;
+    RestTemplate restTemplate = new RestTemplate();
     private WebClient webClient;
+    @Value("${api.producer.host}")
+    private String apiProducerHost;
+
 
     public PaymentService(PaymentRepository paymentRepository, AccountRepository accountRepository) {
         this.paymentRepository = paymentRepository;
         this.accountRepository = accountRepository;
-        webClient = WebClient.create("http://localhost:9000");
+        webClient = WebClient.create(apiProducerHost);
     }
 
     public void processPayment(PaymentEvent payment) {
-        System.out.println("Processing payment: " + payment);
+        System.out.println("Processing payment: id " + payment.getPaymentId() +"account: "+payment.getAccountId()+" amount: "+payment.getAmount());
         Mono<String> response = checkPaymentValid(payment);
         processValidPayment(response.block(), payment);
     }
@@ -85,7 +91,7 @@ public class PaymentService {
     }
 
     private Mono<String> checkPaymentValid(PaymentEvent paymentEvent){
-        final String url = "http://localhost:9000/payment";
+        final String url = apiProducerHost+"/payment";
         return webClient.post()
                 .uri(url)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -100,8 +106,9 @@ public class PaymentService {
     }
 
     private void storeErrorLogs(ErrorDto errorDto){
+        final String url = apiProducerHost+"/log";
         webClient.post()
-                .uri("/log")
+                .uri(url)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(BodyInserters.fromValue(errorDto))
                 .retrieve()
