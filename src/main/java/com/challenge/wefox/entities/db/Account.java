@@ -5,8 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Date;
-
+import java.time.LocalDate;
 @Entity
 @Table(name = "accounts")
 @Getter
@@ -14,7 +13,6 @@ import java.util.Date;
 public class Account {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "account_id")
     private Long accountId;
 
@@ -25,12 +23,12 @@ public class Account {
     private String email;
 
     @Column(name = "birthdate")
-    private Date birthdate;
+    private LocalDate birthdate;
 
     @Column(name = "last_payment_date")
-    private Date lastPaymentDate;
+    private LocalDate lastPaymentDate;
 
     @Column(name = "created_on")
-    private Date createdOn;
+    private LocalDate createdOn;
 }
 

@@ -1,19 +1,16 @@
 package com.challenge.wefox.entities;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
-import java.io.Serializable;
-
 @Builder
 @Data
-public class ErrorDto implements Serializable {
-    private static final long serialVersionUID = -6915528229848073283L;
-    @SerializedName("payment_id")
+public class ErrorDto {
+    @JsonProperty("payment_id")
     private String paymentId;
-    @SerializedName("error_type")
-    private com.challenge.wefox.entities.ErrorType errorType;
-    @SerializedName("error_description")
+    @JsonProperty("error_type")
+    private String errorType;
+    @JsonProperty("error_description")
     private String errorDescription;
 }

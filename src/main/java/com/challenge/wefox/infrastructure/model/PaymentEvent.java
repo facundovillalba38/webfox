@@ -1,16 +1,15 @@
 package com.challenge.wefox.infrastructure.model;
 
-import com.challenge.wefox.entities.db.Account;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.gson.annotations.SerializedName;
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.io.Serializable;
-import java.math.BigDecimal;
 
 @Builder
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class PaymentEvent implements Serializable {
     private static final long serialVersionUID = -6915528229848073283L;
     @SerializedName("payment_id")
