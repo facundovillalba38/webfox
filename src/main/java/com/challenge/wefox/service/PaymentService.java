@@ -10,9 +10,8 @@ import com.challenge.wefox.infrastructure.model.PaymentEvent;
 import com.challenge.wefox.repository.AccountRepository;
 import com.challenge.wefox.repository.PaymentRepository;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -20,42 +19,59 @@ import reactor.core.publisher.Mono;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+/**
+ * Service for processing payments and handling related business logic.
+ */
 @Service
 public class PaymentService {
-    private final static String VALID_PAYMENT = "Payment is Valid";
-    private final static String INVALID_PAYMENT = "Payment is Invalid";
+    private static final String VALID_PAYMENT = "Payment is Valid";
+    private static final String INVALID_PAYMENT = "Payment is Invalid";
+    private static final String PAYMENT_URL_SUFFIX = "/payment";
+    private static final String LOG_URL_SUFFIX = "/log";
+
     private final PaymentRepository paymentRepository;
     private final AccountRepository accountRepository;
-    RestTemplate restTemplate = new RestTemplate();
-    private WebClient webClient;
-    @Value("${api.producer.host}")
-    private String apiProducerHost;
+    private final WebClient webClient;
+    private final String apiProducerHost;
 
-
-    public PaymentService(PaymentRepository paymentRepository, AccountRepository accountRepository) {
+    /**
+     * Constructs a PaymentService with required dependencies.
+     * @param paymentRepository the payment repository
+     * @param accountRepository the account repository
+     * @param webClient the WebClient for external calls
+     * @param apiProducerHost the API producer host
+     */
+    public PaymentService(PaymentRepository paymentRepository, AccountRepository accountRepository, WebClient webClient, @Value("${api.producer.host}") String apiProducerHost) {
         this.paymentRepository = paymentRepository;
         this.accountRepository = accountRepository;
-        webClient = WebClient.create(apiProducerHost);
+        this.webClient = webClient;
+        this.apiProducerHost = apiProducerHost;
     }
 
+    /**
+     * Processes a payment event: validates, persists, and logs as needed.
+     * @param payment the payment event
+     */
     public void processPayment(PaymentEvent payment) {
-        System.out.println("Processing payment: id " + payment.getPaymentId() +"account: "+payment.getAccountId()+" amount: "+payment.getAmount());
         Mono<String> response = checkPaymentValid(payment);
         processValidPayment(response.block(), payment);
     }
 
-    private void processValidPayment(String response, PaymentEvent paymentEvent){
-        if(response.equals(VALID_PAYMENT)){
+    private void processValidPayment(String response, PaymentEvent paymentEvent) {
+        if (VALID_PAYMENT.equals(response)) {
             Account account = getAndSaveAccount(paymentEvent);
             createAndSavePayment(paymentEvent, account);
-        }
-        if(response.equals(INVALID_PAYMENT)){
-            storeErrorLogs(ErrorDto.builder().paymentId(paymentEvent.getPaymentId()).errorType(ErrorType.NETWORK.name()).errorDescription(INVALID_PAYMENT).build());
+        } else if (INVALID_PAYMENT.equals(response)) {
+            storeErrorLogs(ErrorDto.builder()
+                    .paymentId(paymentEvent.getPaymentId())
+                    .errorType(ErrorType.NETWORK.name())
+                    .errorDescription(INVALID_PAYMENT)
+                    .build());
         }
     }
 
-    private void createAndSavePayment(PaymentEvent paymentEvent, Account account){
-        try{
+    private void createAndSavePayment(PaymentEvent paymentEvent, Account account) {
+        try {
             Payment payment = new Payment();
             payment.setPaymentId(paymentEvent.getPaymentId());
             payment.setPaymentType(paymentEvent.getPaymentType());
@@ -64,34 +80,46 @@ public class PaymentService {
             payment.setAccount(account);
             payment.setAmount(BigDecimal.valueOf(paymentEvent.getAmount()));
             paymentRepository.save(payment);
-        }catch (PaymentException ex){
-            storeErrorLogs(ErrorDto.builder().paymentId(paymentEvent.getPaymentId()).errorType(ErrorType.DATABASE.name()).errorDescription(ex.getMessage()).build());
-            throw new PaymentException("An error occurred while saving payment: "+ ex.getMessage());
+        } catch (Exception ex) {
+            storeErrorLogs(ErrorDto.builder()
+                    .paymentId(paymentEvent.getPaymentId())
+                    .errorType(ErrorType.DATABASE.name())
+                    .errorDescription(ex.getMessage())
+                    .build());
+            throw new PaymentException("An error occurred while saving payment: " + ex.getMessage());
         }
     }
 
-    private Account getAndSaveAccount(PaymentEvent paymentEvent){
+    private Account getAndSaveAccount(PaymentEvent paymentEvent) {
         Account account = accountRepository.findByAccountId(Long.valueOf(paymentEvent.getAccountId()))
                 .orElseThrow(() -> {
-                    String accountNotFoundMsg = "Account with ID:"+paymentEvent.getAccountId()+" can't be found";
-                    storeErrorLogs(ErrorDto.builder().paymentId(paymentEvent.getPaymentId()).errorType(ErrorType.DATABASE.name()).errorDescription(accountNotFoundMsg).build());
-                    throw new AccountException(accountNotFoundMsg);
+                    String accountNotFoundMsg = "Account with ID:" + paymentEvent.getAccountId() + " can't be found";
+                    storeErrorLogs(ErrorDto.builder()
+                            .paymentId(paymentEvent.getPaymentId())
+                            .errorType(ErrorType.DATABASE.name())
+                            .errorDescription(accountNotFoundMsg)
+                            .build());
+                    return new AccountException(accountNotFoundMsg);
                 });
         account.setLastPaymentDate(LocalDate.now());
         return saveAccount(paymentEvent.getPaymentId(), account);
     }
 
-    private Account saveAccount(String paymentId, Account account){
-        try{
+    private Account saveAccount(String paymentId, Account account) {
+        try {
             return accountRepository.save(account);
-        }catch (AccountException ex){
-            storeErrorLogs(ErrorDto.builder().paymentId(paymentId).errorType(ErrorType.DATABASE.name()).errorDescription(ex.getMessage()).build());
-            throw new AccountException("An error occurred while saving account: "+ ex.getMessage());
+        } catch (Exception ex) {
+            storeErrorLogs(ErrorDto.builder()
+                    .paymentId(paymentId)
+                    .errorType(ErrorType.DATABASE.name())
+                    .errorDescription(ex.getMessage())
+                    .build());
+            throw new AccountException("An error occurred while saving account: " + ex.getMessage());
         }
     }
 
-    private Mono<String> checkPaymentValid(PaymentEvent paymentEvent){
-        final String url = apiProducerHost+"/payment";
+    private Mono<String> checkPaymentValid(PaymentEvent paymentEvent) {
+        final String url = apiProducerHost + PAYMENT_URL_SUFFIX;
         return webClient.post()
                 .uri(url)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -105,13 +133,14 @@ public class PaymentService {
                 });
     }
 
-    private void storeErrorLogs(ErrorDto errorDto){
-        final String url = apiProducerHost+"/log";
+    private void storeErrorLogs(ErrorDto errorDto) {
+        final String url = apiProducerHost + LOG_URL_SUFFIX;
         webClient.post()
                 .uri(url)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(BodyInserters.fromValue(errorDto))
                 .retrieve()
-                .bodyToMono(String.class);
+                .bodyToMono(String.class)
+                .subscribe();
     }
 }
